@@ -151,7 +151,7 @@ func main() {
 	fmt.Println()
 
 	// 初始化数据库配置
-	dbPath := "config.db"
+	dbPath := "/tmp/config.db"
 	if len(os.Args) > 1 {
 		dbPath = os.Args[1]
 	}
