@@ -139,6 +139,37 @@ if find . -name "*.go" -not -path "./vendor/*" | grep -q .; then
         log_warning "Go not found. Skipping backend checks."
         log_info "Install Go: https://go.dev/doc/install"
     else
+        ###########################################################################
+        # 新增：启用 CGO + 安装 SQLite 依赖（关键添加部分）
+        ###########################################################################
+        log_info "Enabling CGO and installing SQLite dependencies..."
+        export CGO_ENABLED=1  # 强制启用 CGO，解决 go-sqlite3 依赖问题
+        
+        # 根据系统类型安装 SQLite 开发依赖
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS 系统（需提前安装 Homebrew）
+            if ! command -v brew &> /dev/null; then
+                log_warning "Homebrew not found. Please install Homebrew first: https://brew.sh/"
+                log_error "SQLite dependency installation failed. Exiting."
+                exit 1
+            fi
+            brew install sqlite3 || log_warning "SQLite3 may already be installed, continuing..."
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux 系统（Ubuntu/Debian 系列）
+            if command -v apt-get &> /dev/null; then
+                sudo apt-get update && sudo apt-get install -y --no-install-recommends libsqlite3-dev gcc
+            elif command -v yum &> /dev/null; then
+                # CentOS/RHEL 系列
+                sudo yum install -y sqlite-devel gcc
+            elif command -v apk &> /dev/null; then
+                # Alpine 系统（Leapcell 构建环境常用）
+                sudo apk add --no-cache gcc libc-dev sqlite-dev
+            else
+                log_warning "Unsupported Linux package manager. Please install libsqlite3-dev manually."
+            fi
+        else
+            log_warning "Unsupported OS: $OSTYPE. Please ensure SQLite3 development files are installed."
+        fi
         # Format Go code
         log_info "Formatting Go code..."
         if go fmt ./...; then
